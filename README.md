@@ -1,11 +1,11 @@
-[![schema-inspector logo](https://raw2.github.com/Atinux/schema-inspector/master/misc/schema-inspector.png)](http://atinux.github.io/schema-inspector/)
+[![schema-inspector logo](https://raw.githubusercontent.com/Atinux/schema-inspector/master/misc/schema-inspector.png)](http://atinux.github.io/schema-inspector/)
 
 Schema-Inspector is a powerful tool to sanitize and validate JS objects.
 It's designed to work both client-side and server-side and to be scalable with allowing asynchronous and synchronous calls.
 
 [![Build Status](https://travis-ci.org/Atinux/schema-inspector.png?branch=master)](https://travis-ci.org/Atinux/schema-inspector) [![Dependencies Status](https://david-dm.org/atinux/schema-inspector.png)](https://david-dm.org/atinux/schema-inspector) [![NPM version](https://badge.fury.io/js/schema-inspector.png)](http://badge.fury.io/js/schema-inspector)
 
-Demonstration & documentation: http://atinux.github.io/schema-inspector/
+**See a live example:** http://atinux.github.io/schema-inspector/
 
 ## Installation
 
@@ -20,80 +20,41 @@ Demonstration & documentation: http://atinux.github.io/schema-inspector/
 <script type="text/javascript" src="bower_components/schema-inspector/lib/schema-inspector.js"></script>
 ```
 
-## Usage
+## How it looks like
 
-### Synchronous call
+[![schema-inspector demo](http://atinux.github.io/schema-inspector/images/doc/example.png)](http://atinux.github.io/schema-inspector/)
+*Click to see it live!*
+
+## Usage
 
 ```javascript
 var inspector = require('schema-inspector');
 
+// Your object you want to validate (can be a JSON from your API)
+var candidate = {
+	type: 'sms',
+	to: [ 12, 'email@example.com', 'test']
+};
+
+// Your validation schema
 var schema = {
 	type: 'object',
 	properties: {
-		lorem: { type: 'string', eq: 'ipsum' },
-		dolor: {
+		type: { type: 'string', eq: 'email' },
+		to: {
 			type: 'array',
-			items: { type: 'number' }
+			items: { type: 'string', pattern: 'email' }
 		}
 	}
 };
 
-var candidate = {
-	lorem: 'not_ipsum',
-	dolor: [ 12, 34, 'ERROR', 45, 'INVALID' ]
-};
 var result = inspector.validate(schema, candidate); // Candidate is not valid
-console.log(result.format());
-/*
-	Property @.lorem: must be equal to "ipsum", but is equal to "not_ipsum"
-	Property @.dolor[2]: must be number, but is string
-	Property @.dolor[4]: must be number, but is string
-*/
-```
-
-### Asynchronous call
-
-```javascript
-var inspector = require('schema-inspector');
-
-var schema = { ...	};
-
-var candidate = { ... };
-
-inspector.validate(schema, candidate, function (err, result) {
+if (!result.valid)
 	console.log(result.format());
-	/*
-		Property @.lorem: must be equal to "ipsum", but is equal to "not_ipsum"
-		Property @.dolor[2]: must be number, but is string
-		Property @.dolor[4]: must be number, but is string
-	*/
-});
-```
-
-### Custom fields
-
-```javascript
-var inspector = require('schema-inspector');
-
-var schema = {
-	type: 'array',
-	items: { type: 'number', $divisibleBy: 5 }
-};
-
-var custom = {
-	divisibleBy: function (schema, candidate) {
-		var dvb = schema.$divisibleBy;
-		if (candidate % dvb !== 0) {
-			this.report('must be divisible by ' + dvb);
-		}
-	}
-};
-
-var candidate = [ 5, 10, 15, 16 ];
-var result = inspector.validate(schema, candidate, custom);
-console.log(result.format());
 /*
-	Property @[3]: must be divisible by 5
+	Property @.type: must be equal to "email", but is equal to "sms"
+	Property @.to[0]: must be a string, but is number
+	Property @.dolor[4]: must match [email], but is equal to "test"
 */
 ```
 
@@ -103,23 +64,11 @@ console.log(result.format());
 <script type="text/javascript" src="async.js"></script>
 <script type="text/javascript" src="schema-inspetor.js"></script>
 <script type="text/javascript">
-	var schema = {
-		type: 'object',
-		properties: {
-			lorem: { type: 'string', eq: 'ipsum' },
-			dolor: {
-				type: 'array',
-				items: { type: 'number' }
-			}
-		}
-	};
-
-	var candidate = {
-		lorem: 'not_ipsum',
-		dolor: [ 12, 34, 'ERROR', 45, 'INVALID' ]
-	};
+	var schema = { /* ... */ };
+	var candidate = { /* ... */ };
 	SchemaInspector.validate(schema, candidate, function (err, result) {
-		alert(result.format());
+		if (!result.valid)
+			return alert(result.format());
 	});
 </script>
 ```
@@ -152,6 +101,7 @@ In the example below, the `inspector` variable will be used.  For the client-sid
 * [rules](#s_rules)
 * [min, max](#s_comparators)
 * [minLength, maxLength](#s_length)
+* [strict](#s_strict)
 * [exec](#s_exec)
 * [properties](#s_properties)
 * [items](#s_items)
@@ -166,9 +116,6 @@ In the example below, the `inspector` variable will be used.  For the client-sid
 
 ### Thanks to:
 * [Benjamin Gressier](https://twitter.com/NikitaJS) (major contributor of this awesome module)
-
-### Roadmap:
-* [V2.0 - With json-schema.org](https://github.com/Atinux/schema-inspector/issues/milestones?with_issues=no)
 
 ## Validation
 
@@ -186,6 +133,7 @@ In the example below, the `inspector` variable will be used.  For the client-sid
 	* `date` (constructor === Date)
 	* `object` (constructor === Object)
 	* `array` (constructor === Array)
+	* A function (candidate isinstance)
 	* `any` (it can be anything)
 
 Allow to check property type. If the given value is incorrect, then type is not
@@ -196,39 +144,47 @@ __Example__
 ```javascript
 var inspector = require('schema-inspector');
 
+function Class() {}
+
 var schema = {
 	type: 'object',
 	properties: {
 		lorem: {  type: 'number' },
 		ipsum: { type: 'any' },
-		dolor: { type: ['number' 'string', 'null'] }
+		dolor: { type: ['number' 'string', 'null'] },
+		sit: { type: Class }
 	}
 };
 
 var c1 = {
 	lorem: 12,
 	ipsum: 'sit amet',
-	dolor: 23
+	dolor: 23,
+	sit: new Class()
 };
 var c2 = {
 	lorem: 12,
 	ipsum: 34,
 	dolor: 'sit amet'
+	sit: new Class();
 };
 var c3 = {
 	lorem: 12,
 	ipsum: [ 'sit amet' ],
-	dolor: null
+	dolor: null,
+	sit: new Class();
 };
 var c4 = {
 	lorem: '12',
 	ipsum: 'sit amet',
-	dolor: new Date()
+	dolor: new Date(),
+	sit: {}
 };
+
 inspector.validate(schema, c1); // Valid
 inspector.validate(schema, c2); // Valid
 inspector.validate(schema, c3); // Valid
-inspector.validate(schema, c4); // Invalid: @.lorem must be a number, @dolor must be a number, a string or null
+inspector.validate(schema, c4); // Invalid: @.lorem must be a number, @dolor must be a number, a string or null, @.sit must be an instance of Class, but is object
 ```
 
 ---------------------------------------
@@ -245,7 +201,7 @@ This field indicates whether or not property has to exist.
 __Example__
 
 ```javascript
-var inspector = require('schema-inspector');
+var inspector = require('Roadspector');
 
 var schema1 = {
 	type: 'object',
@@ -454,7 +410,7 @@ inspector.validate(schema, c3); // Invalid: Neither @.lorem nor @.ipsum is in c3
 * **default**: false.
 * **usable on**: object.
 
-Only key provided in field "properties" may exist in object.
+Only keys provided in field "properties" may exist in object. Strict will be ignored if properties has the special key '*'.
 
 __Example__
 
@@ -529,6 +485,8 @@ inspector.validate(schema, c2); // Invalid: "@.lorem must not equal 3 =(".
 For each property in the field "properties", whose value must be a schema,
 validation is called deeper in object.
 
+The special property '*' is validated against any properties not specifically listed.
+
 __Example__
 
 ```javascript
@@ -548,7 +506,8 @@ var schema = {
 				}
 			}
 		},
-		consectetur: { type: 'string' }
+		consectetur: { type: 'string' },
+		'*': { type: 'integer' }
 	}
 };
 
@@ -558,7 +517,8 @@ var c1 = {
 			dolor: 'sit amet'
 		}
 	},
-	consectetur: 'adipiscing elit'
+	consectetur: 'adipiscing elit',
+	adipiscing: 12
 };
 var c2 = {
 	lorem: {
@@ -745,10 +705,10 @@ console.log(r2.error[0].code); // 'id-format'
 
 Cast property to the given type according to the following description:
 * **to number from**:
-	* string
-		* "12.34" -> 12.34
-	* date
-		* new Date("2014-01-01") -> 1388534400000)
+	* string (ex: "12.34" -> 12.34)
+![sanitization string to number](http://atinux.github.io/schema-inspector/images/doc/sanitization-type-string-to-number.gif)
+	* date (ex: new Date("2014-01-01") -> 1388534400000)
+![sanitization string to number](http://atinux.github.io/schema-inspector/images/doc/sanitization-type-date-to-number.gif)
 * **to integer from**:
 	* number
 		* 12.34 -> 12
@@ -799,7 +759,7 @@ var c = [ 12.23, -34, true, false, 'true', 'false', [123, 234, 345], { obj: "yes
 
 var r = inspector.sanitize(schema, c);
 /*
-	c: [ '12.23', '-34', 'true', 'false', 'true', 'false', '123,234,345', '{"obj":"yes"}' ]
+	r.data: [ '12.23', '-34', 'true', 'false', 'true', 'false', '123,234,345', '{"obj":"yes"}' ]
 */
 ```
 
@@ -836,7 +796,7 @@ var c = {
 
 var r = inspector.sanitize(schema, c);
 /*
-	c: {
+	r.data: {
 		lorem: 10,
 		ipsum: 'NikitaJS',
 		dolor: 'sit amet'
@@ -873,7 +833,7 @@ var c = { };
 
 var r = inspector.sanitize(schema, c);
 /*
-	c: {
+	r.data: {
 		lorem: 12 // Only lorem is set to 12 because it is not optional.
 	}
 */
@@ -897,6 +857,8 @@ var r = inspector.sanitize(schema, c);
 Apply the given rule to a string. If several rules are given (array), then they
 are applied in the same order than in the array.
 
+![sanitization min/max](http://atinux.github.io/schema-inspector/images/doc/sanitization-rules.gif)
+
 __Example__
 
 ```javascript
@@ -917,7 +879,7 @@ var c = {
 
 var r = inspector.sanitize(schema, c);
 /*
-	c: {
+	r.data: {
 		lorem: ' THIS IS SPARTA! ',
 		ipsum: 'This Is Sparta!' // has been trimed, then titled
 	}
@@ -936,6 +898,8 @@ Define minimum and maximum value for a property. If it's less than minimum,
 then it's set to minimum. If it's greater than maximum, then it's set to
 maximum.
 
+![sanitization min/max](http://atinux.github.io/schema-inspector/images/doc/sanitization-min-max.gif)
+
 __Example__
 
 ```javascript
@@ -950,7 +914,7 @@ var c = [5, 10, 15, 20, 25];
 
 var r = inspector.sanitize(schema, c);
 /*
-	c: [10, 10, 15, 20, 20]
+	r.data: [10, 10, 15, 20, 20]
 	c[0] (5) was less than min (10), so it's been set to 10.
 	c[4] (25) was greater than max (20), so it's been set to 20.
 */
@@ -982,10 +946,46 @@ var c = ['short', 'mediumSize', 'tooLongForThisSchema'];
 
 var r = inspector.sanitize(schema, c);
 /*
-	c: ['short---', 'mediumSize', 'tooLongForT']
+	r.data: ['short---', 'mediumSize', 'tooLongForT']
 */
 ```
 
+---------------------------------------
+
+<a name="s_strict" />
+### strict
+
+* **type**: boolean.
+* **default**: false.
+* **usable on**: any.
+
+Only key provided in field "properties" will exist in object, others will be deleted.
+
+__Example__
+
+```javascript
+var inspector = require('schema-inspector');
+
+var schema = {
+	type: 'object',
+	strict: true,
+	properties: {
+		good: { type: 'string' }
+	}
+};
+
+var c = {
+	good: 'yes',
+	bad: 'nope'
+};
+
+var r = inspector.sanitize(schema, c);
+/*
+	r.data: {
+		good: 'yes'
+	}
+*/
+```
 ---------------------------------------
 
 <a name="s_exec" />
@@ -1025,7 +1025,7 @@ var c = [ 'Nikita', 'lol', 'NIKITA', 'thisIsGonnaBeSanitized!' ];
 
 var r = inspector.sanitize(schema, c);
 /*
-	c: [ 'Nikita', '_INVALID_', 'NIKITA', '_INVALID_' ]
+	r.data: [ 'Nikita', '_INVALID_', 'NIKITA', '_INVALID_' ]
 */
 ```
 

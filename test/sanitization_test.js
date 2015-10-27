@@ -1,5 +1,5 @@
 var should = require('should');
-var si = require('../lib/schema-inspector');
+var si = require('../');
 
 exports.sanitization = function () {
 	suite('schema #1 (type casting [string])', function () {
@@ -135,6 +135,15 @@ exports.sanitization = function () {
 			result.reporting[2].property.should.be.equal('@[2]');
 			result.reporting[3].property.should.be.equal('@[3]');
 			candidate.should.be.eql([300, +date, 1388534400000, -1]);
+		});
+
+		test('candidate #4 | string -> integer', function () {
+			var result = si.sanitize({ type: 'integer' }, '42');
+			result.should.be.an.Object;
+			result.should.have.property('reporting').with.be.an.instanceof(Array)
+			.and.be.lengthOf(1);
+			result.reporting[0].property.should.be.equal('@');
+			result.data.should.be.eql(42);
 		});
 
 	}); // suite "schema #2"
@@ -357,6 +366,15 @@ exports.sanitization = function () {
 			});
 		});
 
+		test('candidate #2', function () {
+			var result = si.sanitize({ type: 'array', optional: false, def: [], items: { type: 'object' } }, { prop: 'value' });
+			result.should.be.an.Object;
+			result.should.have.property('reporting').with.be.an.instanceof(Array)
+			.and.be.lengthOf(1);
+			result.reporting[0].property.should.be.equal('@');
+			result.data.should.eql([ { prop: 'value' } ]);
+		});
+
 	}); // suite "schema #7"
 
 	suite('schema #8 (array sanitization with an hash of schema)', function () {
@@ -406,7 +424,8 @@ exports.sanitization = function () {
 						one: { type: 'integer', optional: false, def: 1 },
 						two: { type: 'integer', optional: false, def: 2 },
 						three: { type: 'integer', optional: false, def: 3 },
-						four: { type: 'integer', optional: false, def: 4 }
+						four: { type: 'integer', optional: false, def: 4 },
+						five: { type: 'integer', optional: "false", def: 5 }
 					}
 				}
 			}
@@ -424,14 +443,16 @@ exports.sanitization = function () {
 			var result = si.sanitize(schema, candidate);
 			result.should.be.an.Object;
 			result.should.have.property('reporting').with.be.an.instanceof(Array)
-			.and.be.lengthOf(1);
+			.and.be.lengthOf(2);
 			result.reporting[0].property.should.be.equal('@.hash.four');
+			result.reporting[1].property.should.be.equal('@.hash.five');
 			candidate.should.eql({
 				hash: {
 					one: 11,
 					two: 22,
 					three: 33,
-					four: 4
+					four: 4,
+					five: 5
 				}
 			});
 		});
@@ -446,16 +467,18 @@ exports.sanitization = function () {
 			var result = si.sanitize(schema, candidate);
 			result.should.be.an.Object;
 			result.should.have.property('reporting').with.be.an.instanceof(Array)
-			.and.be.lengthOf(3);
+			.and.be.lengthOf(4);
 			result.reporting[0].property.should.be.equal('@.hash.one');
 			result.reporting[1].property.should.be.equal('@.hash.three');
 			result.reporting[2].property.should.be.equal('@.hash.four');
+			result.reporting[3].property.should.be.equal('@.hash.five');
 			candidate.should.eql({
 				hash: {
 					one: 1,
 					two: 22,
 					three: 3,
-					four: 4
+					four: 4,
+					five: 5
 				}
 			});
 		});
@@ -470,16 +493,18 @@ exports.sanitization = function () {
 			var result = si.sanitize(schema, candidate);
 			result.should.be.an.Object;
 			result.should.have.property('reporting').with.be.an.instanceof(Array)
-			.and.be.lengthOf(3);
+			.and.be.lengthOf(4);
 			result.reporting[0].property.should.be.equal('@.hash.one');
 			result.reporting[1].property.should.be.equal('@.hash.two');
 			result.reporting[2].property.should.be.equal('@.hash.three');
+			result.reporting[3].property.should.be.equal('@.hash.five');
 			candidate.should.eql({
 				hash: {
 					one: 1,
 					two: 2,
 					three: 3,
-					four: 44
+					four: 44,
+					five: 5
 				}
 			});
 		});
@@ -553,7 +578,8 @@ exports.sanitization = function () {
 					def: {},
 					type: 'object',
 					properties: {
-						ipsum: { type: 'string', def: 'Nikita', optional: true }
+						ipsum: { type: 'string', def: 'Nikita', optional: true },
+						ipsum2: { type: 'string', def: 'Atinux', optional: 'true' },
 					}
 				}
 			}
@@ -568,11 +594,13 @@ exports.sanitization = function () {
 			var result = si.sanitize(schema, candidate);
 			result.should.be.an.Object;
 			result.should.have.property('reporting').with.be.an.instanceof(Array)
-			.and.be.lengthOf(1);
+			.and.be.lengthOf(2);
 			result.reporting[0].property.should.be.equal('@.lorem.ipsum');
+			result.reporting[1].property.should.be.equal('@.lorem.ipsum2');
 			candidate.should.eql({
 				lorem: {
-					ipsum: 'Nikita'
+					ipsum: 'Nikita',
+					ipsum2: 'Atinux'
 				}
 			});
 		});
@@ -584,12 +612,14 @@ exports.sanitization = function () {
 			var result = si.sanitize(schema, candidate);
 			result.should.be.an.Object;
 			result.should.have.property('reporting').with.be.an.instanceof(Array)
-			.and.be.lengthOf(2);
+			.and.be.lengthOf(3);
 			result.reporting[0].property.should.be.equal('@.lorem');
 			result.reporting[1].property.should.be.equal('@.lorem.ipsum');
+			result.reporting[2].property.should.be.equal('@.lorem.ipsum2');
 			candidate.should.eql({
 				lorem: {
-					ipsum: 'Nikita'
+					ipsum: 'Nikita',
+					ipsum2: 'Atinux'
 				}
 			});
 		});
@@ -604,7 +634,8 @@ exports.sanitization = function () {
 					optional: true,
 					def: {},
 					properties: {
-						ipsum: { def: 'Nikita', optional: true }
+						ipsum: { def: 'Nikita', optional: true },
+						ipsum2: { def: 'Nikita', optional: 'true' }
 					}
 				}
 			}
@@ -899,6 +930,31 @@ exports.sanitization = function () {
 				done();
 			});
 		});
+
+		test('candidate #4', function (done) {
+			var customSchema = {
+				type: 'array',
+				items: {
+					type: 'object',
+					properties: {
+						prop: {
+							exec: function (schema, post, cb) {
+								cb(null, 'coucou');
+							}
+						}
+					}
+				}
+			};
+			si.sanitize(customSchema, { prop: 'value' }, function (err, result) {
+				should.not.exist(err);
+				result.should.be.an.Object;
+				result.should.have.property('reporting').with.be.an.instanceof(Array)
+				.and.be.lengthOf(1);
+				result.reporting[0].property.should.be.equal('@');
+				result.data.should.be.eql([ { prop: 'coucou' } ]);
+				done();
+			});
+		});
 	}); // suite "schema #16"
 
 	suite('schema #16.1 (Asynchronous call + globing)', function () {
@@ -1180,20 +1236,17 @@ exports.sanitization = function () {
 		};
 
 		var custom = {
-			superiorMod: function (schema, post, callback) {
+			superiorMod: function (schema, post) {
 				var spm = schema.$superiorMod;
 				if (typeof spm !== 'number' || typeof post !== 'number') {
-					callback();
+					return post;
 				}
-				var self = this;
-				process.nextTick(function () {
-					var mod = post % spm;
-					if (mod !== 0) {
-						self.report();
-						return callback(null, post + spm - mod);
-					}
-					callback(null, post);
-				});
+				var mod = post % spm;
+				if (mod !== 0) {
+					this.report();
+					return (post + spm - mod);
+				}
+				return post;
 			}
 		};
 
@@ -1204,13 +1257,11 @@ exports.sanitization = function () {
 				lorem: 5
 			};
 
-			si.sanitize(schema, candidate, function (err, result) {
-				should.not.exist(err);
-				result.should.be.an.Object;
-				result.should.have.property('reporting').with.be.an.instanceof(Array)
-				.and.be.lengthOf(0);
-				done();
-			});
+			var result = si.sanitize(schema, candidate);
+			result.should.be.an.Object;
+			result.should.have.property('reporting').with.be.an.instanceof(Array)
+			.and.be.lengthOf(0);
+			done();
 		});
 
 		test('candidat #2', function (done) {
@@ -1218,15 +1269,13 @@ exports.sanitization = function () {
 				lorem: 7
 			};
 
-			si.sanitize(schema, candidate, function (err, result) {
-				should.not.exist(err);
-				result.should.be.an.Object;
-				result.should.have.property('reporting').with.be.an.instanceof(Array)
-				.and.be.lengthOf(1);
-				result.reporting[0].property.should.be.equal('@.lorem');
-				candidate.lorem.should.equal(10);
-				done();
-			});
+			var result = si.sanitize(schema, candidate);
+			result.should.be.an.Object;
+			result.should.have.property('reporting').with.be.an.instanceof(Array)
+			.and.be.lengthOf(1);
+			result.reporting[0].property.should.be.equal('@.lorem');
+			candidate.lorem.should.equal(10);
+			done();
 		});
 
 		test('Reseting default schema', function () {
@@ -1317,5 +1366,54 @@ exports.sanitization = function () {
 			candidate.should.eql({ tab: [ 'one', 'two', 'three' ] });
 		});
 
-	}); // suite "schema #17"
+	});
+	// suite "schema #18"
+	suite('schema #18 (strict option)', function () {
+		var schema = {
+			type: 'object',
+			strict: true,
+			properties: {
+				good: { type: 'string' }
+			}
+		};
+
+		test('candidate #1 | remove useless keys', function () {
+			var candidate = {
+				good: 'key',
+				bad: 'key'
+			};
+
+			var result = si.sanitize(schema, candidate);
+			result.should.be.an.Object;
+			candidate.should.be.eql({ good: 'key' });
+		});
+
+		test('candidate #2 | remove nothing because candidate is not an object', function () {
+			var candidate = 'coucou';
+
+			var result = si.sanitize(schema, candidate);
+			result.should.be.an.Object;
+			result.should.have.property('reporting').with.be.an.instanceof(Array)
+			.and.be.lengthOf(0);
+			candidate.should.be.eql('coucou');
+		});
+
+		test('candidate #3 | remove nothing because candidate is not an object', function () {
+			var schema1 = {
+				type: 'object',
+				strict: true
+			};
+			var candidate = {
+				good: 'key',
+				bad: 'key'
+			};
+
+			var result = si.sanitize(schema1, candidate);
+			result.should.be.an.Object;
+			result.should.have.property('reporting').with.be.an.instanceof(Array)
+			.and.be.lengthOf(0);
+			candidate.should.be.eql(candidate);
+		});
+
+	});
 };
